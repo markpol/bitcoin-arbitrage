@@ -1,12 +1,7 @@
-import urllib.request
-import urllib.error
-import urllib.parse
-import json
-import logging
 from .market import Market
 
-
 class Bitfinex(Market):
+
     def __init__(self, **kwargs):
         super(Bitfinex, self).__init__(**kwargs)
         self.update_rate = 20
@@ -14,17 +9,12 @@ class Bitfinex(Market):
             {'price': 0, 'amount': 0}]}
 
     def update_depth(self):
-        res = urllib.request.urlopen(
-            'https://bitfinex.com/api/v1/book/%s%s' % (
-                self.amount_currency.lower(), self.price_currency.lower()
-            )
-        )
-        jsonstr = res.read().decode('utf8')
-        try:
-            depth = json.loads(jsonstr)
-        except Exception:
-            logging.error("%s - Can't parse json: %s" % (self.name, jsonstr))
-        self.depth = self.format_depth(depth)
+        url = 'https://api.bitfinex.com/v1/book/%s' % self.get_currency_code_pair()
+        self.depth = self.format_depth(self.send_update_depth_request(url))
+
+    def get_currency_code_pair(self):
+        return '%s%s' % (self.amount_currency.lower(),
+                         self.price_currency.lower())
 
     def sort_and_format(self, l, reverse=False):
         l.sort(key=lambda x: float(x["price"]), reverse=reverse)

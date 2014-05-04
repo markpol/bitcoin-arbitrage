@@ -1,12 +1,13 @@
 from .market import Market
 
-class Btce(Market):
+
+class Bter(Market):
 
     def __init__(self, **kwargs):
-        super(Btce, self).__init__(**kwargs)
+        super(Bter, self).__init__(**kwargs)
 
     def update_depth(self):
-        url = 'https://btc-e.com/api/2/%s/depth' % self.get_currency_code_pair()
+        url = 'https://data.bter.com/api/1/depth/%s' % self.get_currency_code_pair()
         self.depth = self.format_depth(self.send_update_depth_request(url))
 
     def sort_and_format(self, l, reverse=False):
@@ -22,5 +23,5 @@ class Btce(Market):
         return {'asks': asks, 'bids': bids}
 
 if __name__ == "__main__":
-    market = Btce()
+    market = Bter()
     print(market.get_ticker())

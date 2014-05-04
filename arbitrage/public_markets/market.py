@@ -1,7 +1,5 @@
 import time
-import urllib.request
-import urllib.error
-import urllib.parse
+import requests
 import config
 import logging
 from decimal import Decimal
@@ -16,6 +14,9 @@ class Market(object):
         self.update_rate = update_rate
         self.trade_fee = 0
         self.locked = False
+        self.request_session = requests.Session()
+        request_logger = logging.getLogger('requests')
+        request_logger.setLevel(logging.WARNING)
 
     @property
     def name(self):
@@ -68,7 +69,7 @@ class Market(object):
         #    logging.warning(('Market: %s order book ' % self.name) \
         #        + 'is invalid (bid>ask)')
         #    self.depth = {
-        #        'asks': [{'price': 0, 'amount': 0}], 
+        #        'asks': [{'price': 0, 'amount': 0}],
         #        'bids': [{'price': 0, 'amount': 0}]
         #    }
         return self.depth
@@ -181,7 +182,7 @@ class Market(object):
 
         elif currency == self.price_currency:
             gross = Decimal(str(volume)) / Decimal(str(depth["bids"][0]["price"]))
-                
+
         else:
             self._raise_currency_exception(currency)
 
@@ -214,7 +215,7 @@ class Market(object):
 
         elif currency == self.price_currency:
             gross = Decimal(str(volume)) / Decimal(str(depth["asks"][0]["price"]))
-                
+
         else:
             self._raise_currency_exception(currency)
 
@@ -268,8 +269,9 @@ class Market(object):
         try:
             self.update_depth()
             self.depth_updated = time.time()
-        except (urllib.error.HTTPError, urllib.error.URLError) as e:
-            logging.error("HTTPError, can't update market: %s" % self.name)
+        except (requests.exceptions.RequestException) as e:
+            logging.error("RequestException, can't update market: %s - %s"
+                          % (self.name, str(e)))
         except Exception as e:
             logging.error("Can't update market: %s - %s" % (self.name, str(e)))
 
@@ -280,6 +282,28 @@ class Market(object):
             res = {'ask': depth['asks'][0],
                    'bid': depth['bids'][0]}
         return res
+
+    def get_currency_code_pair(self):
+        return '%s_%s' % (self.amount_currency.lower(),
+                         self.price_currency.lower())
+
+    def send_update_depth_request(self, url, method='GET', params=None, return_json=True):
+        if method == 'GET':
+            response = self.request_session.get(url, params=params)
+        elif method == 'POST':
+            response = self.request_session.post(url, params=params)
+        else:
+            raise Exception("Request method must be GET or POST")
+        if response.status_code != 200:
+            msg = "Invalid response status code: %s, content: %s" % (
+                response.status_code, response.content
+            )
+            logging.log(logging.ERROR, msg)
+            raise Exception(msg)
+        if return_json:
+            return response.json()
+        else:
+            return response
 
     ## Abstract methods
     def update_depth(self):
@@ -297,8 +321,8 @@ class Market(object):
         raise Exception("Unsupported currency: %s. Require %s or %s." % (
             currency, self.amount_currency, self.price_currency
         ))
-   
+
     def __str__(self):
         return "<%s(%s/%s)>" % (
             self.name, self.amount_currency, self.price_currency
-        ) 
+        )

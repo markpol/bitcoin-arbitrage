@@ -24,9 +24,9 @@ class Arbitrer(object):
     def __init__(self, config = config):
         self.observers = {}
         self.markets = []
-        self.reload(config)        
+        self.reload(config)
         config_dynamic.updated.connect(self.reload)
-        
+
 
     def reload(self, config):
         for observer_name, observer in self.observers.items():
@@ -62,7 +62,7 @@ class Arbitrer(object):
         for market_name, currency_pairs in markets.items():
             market_class_name = market_name.lower() + "_market"
             exec('from public_markets import ' + market_class_name)
-            
+
             for pair in currency_pairs:
                 market = eval(market_class_name.lower() +
                     '.' + market_name +
@@ -105,7 +105,7 @@ class Arbitrer(object):
         """Instantiates the observer classes and populates the observers list.
 
         Observers allow for asynchronous output and/or order execution when the
-        `Arbitrer` object discovers profitable trades. 
+        `Arbitrer` object discovers profitable trades.
 
         Positional args:
         _observers - A list of names of classes in the `observers` module.
@@ -127,10 +127,12 @@ class Arbitrer(object):
         for market in self.markets:
             ticker=market.get_ticker()
             logging.debug(
-                "ticker: %-10s ask: %8.2f %3s (%5.2f) - bid: %8.2f %3s (%5.2f)" %
+                "ticker: %-10s ask: %5.5f %4s (%5.3f %4s) - bid: %5.5f %4s (%5.3f %4s)" %
                 (market.name[:10],
-                 ticker["ask"]["price"],market.price_currency,ticker["ask"]["amount"],
-                 ticker["bid"]["price"],market.price_currency,ticker["bid"]["amount"]))
+                 ticker["ask"]["price"],market.price_currency,ticker["ask"]["amount"],market.amount_currency,
+                 ticker["bid"]["price"],market.price_currency,ticker["bid"]["amount"],market.amount_currency
+                 )
+            )
 
 
     def replay_history(self, directory):
@@ -171,7 +173,7 @@ class Arbitrer(object):
         """
         # Alert observers to the fact that we've now begun a tick.
         # This allows them to, for example, instantiate an empty list
-        # where they might keep profitable trades. 
+        # where they might keep profitable trades.
         for observer in self.observers.values():
             observer.begin_opportunity_finder(self.markets)
 
